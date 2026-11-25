@@ -1,0 +1,495 @@
+{
+  "active": false,
+  "connections": {
+    "New Warranty Query": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Validate Query",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Validate Query": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Parse Claim",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Parse Claim": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Parse Claim JSON",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Parse Claim JSON": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Check Warranty",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Check Warranty": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Route Claim",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Route Claim": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Covered Reply",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Expired Reply",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Ask Proof Reply",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Out of Scope Reply",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Ask Proof Reply",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Covered Reply": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Reply \u2014 Warranty Response",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Expired Reply": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Reply \u2014 Warranty Response",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Ask Proof Reply": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Reply \u2014 Warranty Response",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Out of Scope Reply": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Reply \u2014 Warranty Response",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "index": 0,
+            "node": "Parse Claim",
+            "type": "ai_languageModel"
+          },
+          {
+            "index": 0,
+            "node": "Covered Reply",
+            "type": "ai_languageModel"
+          },
+          {
+            "index": 0,
+            "node": "Expired Reply",
+            "type": "ai_languageModel"
+          },
+          {
+            "index": 0,
+            "node": "Ask Proof Reply",
+            "type": "ai_languageModel"
+          },
+          {
+            "index": 0,
+            "node": "Out of Scope Reply",
+            "type": "ai_languageModel"
+          }
+        ]
+      ]
+    }
+  },
+  "name": "AI Warranty Claim Checker",
+  "nodes": [
+    {
+      "id": "6e8f4e4d-d319-44f4-8f34-e288c8dc5fb0",
+      "name": "README Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "color": 4,
+        "content": "## AI Warranty Claim Checker (demo: TechCare)\nCustomer asks 'is this under warranty?' \u2014 Groq AI parses product + purchase date, a Code node checks a warranty table, a Switch routes it: covered, expired, need proof, or out of scope. No email/sheet step (no Google APIs on this VM).",
+        "height": 280,
+        "width": 420
+      }
+    },
+    {
+      "id": "477f7a87-08e5-41bb-a8dc-03df0d277442",
+      "name": "New Warranty Query",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        320
+      ],
+      "webhookId": "5805a2a8-6b2e-4721-ad44-a38be1a8c748",
+      "notes": "POST a warranty question here: { name, message }.",
+      "parameters": {
+        "httpMethod": "POST",
+        "options": {},
+        "path": "warranty",
+        "responseMode": "responseNode"
+      }
+    },
+    {
+      "id": "2a0d84fe-cef7-4a6e-aff2-865e9e567558",
+      "name": "Validate Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        320
+      ],
+      "parameters": {
+        "jsCode": "const body = $json.body || $json; const name = body.name ?? ''; const message = (body.message ?? '').toString(); let valid = true; let reason = 'Request is valid.'; if (!message || message.trim().length === 0) { valid = false; reason = 'Message is empty - please describe the product and when it was bought.'; } else if (message.trim().length <= 5) { valid = false; reason = 'Message is too short - please describe the product and when it was bought.'; } return [{ json: { name, message: message.trim(), valid, reason } }];"
+      }
+    },
+    {
+      "id": "9c04c992-0396-4361-95cf-bbf12899291c",
+      "name": "Parse Claim",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        520,
+        320
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ '<context>TechCare is a small electronics shop. A customer messaged asking whether their product is still under warranty.</context><task>Parse the customer message into structured JSON.</task><input>Customer name: ' + $json.name + '. Message: ' + $json.message + '. Today is 2026-11-23 \u2014 use it to convert relative dates like \"3 months ago\" into an exact date.</input><format>Return ONLY a JSON object with exactly these fields: product (one of: smartphone, laptop, tv, washing_machine, fridge, smartwatch, headphones, accessories, other \u2014 use other ONLY if the product is clearly not electronics the shop sells, e.g. a car), purchase_date (the purchase date as YYYY-MM-DD, or null if the customer does not state one).</format><rules>Output ONLY that one-line JSON object, no thinking, no preamble, no explanation, no markdown.</rules><example>{\"product\":\"smartphone\",\"purchase_date\":\"2026-08-23\"}</example>' }}",
+        "options": {
+          "systemMessage": "You are a warranty parser for a small electronics shop. Read the customer's free-text message and extract the product and the purchase date. Return ONLY a JSON object: {\"product\": \"...\", \"purchase_date\": \"YYYY-MM-DD or null\"}. Product must be one of: smartphone, laptop, tv, washing_machine, fridge, smartwatch, headphones, accessories, other. Use null for purchase_date when the customer does not state one. No markdown, no extra text."
+        }
+      }
+    },
+    {
+      "id": "598466f9-f839-40f4-a5e3-d69f1d8183e6",
+      "name": "Parse Claim JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        320
+      ],
+      "parameters": {
+        "jsCode": "const raw = ($json.output || '').toString().trim();\nconst cleaned = raw.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '').trim();\nlet parsed = {};\ntry { parsed = JSON.parse(cleaned); } catch (e) {\n  parsed = {};\n  const pick = function(re) { const m = cleaned.match(re); return m ? m[1] : undefined; };\n  const pr = pick(/\"product\": *\"([^\"]*)\"/);\n  if (pr) parsed.product = pr;\n  const pd = pick(/\"purchase_date\": *\"([^\"]*)\"/);\n  if (pd) parsed.purchase_date = pd;\n  if (/\"purchase_date\": *null/.test(cleaned)) parsed.purchase_date = null;\n}\nconst v = $('Validate Query').first().json;\nlet product = (parsed.product || 'other').toString().toLowerCase().trim();\nconst allowed = ['smartphone', 'laptop', 'tv', 'washing_machine', 'fridge', 'smartwatch', 'headphones', 'accessories', 'other'];\nif (!allowed.includes(product)) product = 'other';\nlet pd = parsed.purchase_date;\nif (pd === null || pd === undefined || pd === 'null' || pd === '') pd = null;\nelse {\n  pd = pd.toString().trim();\n  if (!/^\\d{4}[-/]\\d{1,2}[-/]\\d{1,2}$/.test(pd)) pd = null;\n  else pd = pd.replace(/\\//g, '-');\n}\nreturn [{ json: { name: v.name, message: v.message, valid: v.valid, reason: v.reason, product, purchase_date: pd } }];"
+      }
+    },
+    {
+      "id": "5994b2fe-b0d5-4f84-8c90-4a4ccb4ce81d",
+      "name": "Check Warranty",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        320
+      ],
+      "parameters": {
+        "jsCode": "const v = $('Parse Claim JSON').first().json;\nconst WARRANTY_MONTHS = {\n  smartphone: 12,\n  laptop: 24,\n  tv: 24,\n  washing_machine: 24,\n  fridge: 24,\n  smartwatch: 12,\n  headphones: 6,\n  accessories: 3\n};\nconst LABELS = {\n  smartphone: 'Smartphone',\n  laptop: 'Laptop',\n  tv: 'TV',\n  washing_machine: 'Washing Machine',\n  fridge: 'Fridge',\n  smartwatch: 'Smartwatch',\n  headphones: 'Headphones',\n  accessories: 'Accessories (charger/cable)'\n};\nfunction normaliseProduct(raw) {\n  const s = (raw || '').toString().toLowerCase().trim();\n  if (!s) return 'other';\n  if (/(washing machine|washer)/.test(s)) return 'washing_machine';\n  if (/(smartwatch|apple watch|watch)/.test(s)) return 'smartwatch';\n  if (/(headphone|earphone|earbud|airpod)/.test(s)) return 'headphones';\n  if (/(charger|cable|accessor)/.test(s)) return 'accessories';\n  if (/(fridge|refrigerator)/.test(s)) return 'fridge';\n  if (/(^|[^a-z])tv([^a-z]|$)|television/.test(s)) return 'tv';\n  if (/(laptop|macbook|notebook)/.test(s)) return 'laptop';\n  if (/(iphone|smartphone|mobile|phone)/.test(s)) return 'smartphone';\n  if (WARRANTY_MONTHS[s] !== undefined) return s;\n  return 'other';\n}\nfunction parseDate(raw) {\n  if (!raw) return null;\n  const s = raw.toString().trim();\n  const m = s.match(/^(\\d{4})[-/](\\d{1,2})[-/](\\d{1,2})$/);\n  if (!m) return null;\n  const d = new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));\n  if (isNaN(d.getTime())) return null;\n  return d;\n}\nfunction fmt(d) {\n  const p = function(n) { return (n < 10 ? '0' : '') + n; };\n  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());\n}\nfunction fullMonths(from, to) {\n  let months = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());\n  if (to.getDate() < from.getDate()) months -= 1;\n  return months;\n}\nconst product = normaliseProduct(v.product);\nconst bought = parseDate(v.purchase_date);\nconst today = new Date();\nlet monthsSince = null;\nif (bought) monthsSince = fullMonths(bought, today);\nconst warrantyMonths = WARRANTY_MONTHS[product] !== undefined ? WARRANTY_MONTHS[product] : null;\nconst label = LABELS[product] || (v.product ? v.product.toString() : 'product');\nlet verdict = 'need_proof';\nlet reason = '';\nif (product === 'other') {\n  verdict = 'out_of_scope';\n  reason = (v.product ? v.product.toString() : 'This product') + ' is not a product TechCare sells \u2014 the warranty table covers smartphones, laptops, TVs, washing machines, fridges, smartwatches, headphones and chargers/cables only.';\n} else if (!bought || monthsSince === null) {\n  verdict = 'need_proof';\n  reason = 'No usable purchase date in the message \u2014 ask for the receipt or invoice so the warranty can be checked.';\n} else if (monthsSince < 0) {\n  verdict = 'need_proof';\n  reason = 'The purchase date given is in the future \u2014 ask for the receipt or invoice to check the warranty.';\n} else if (monthsSince <= warrantyMonths) {\n  verdict = 'covered';\n  reason = label + ' bought ' + fmt(bought) + ' \u2014 ' + monthsSince + ' months ago, warranty ' + warrantyMonths + ' months. Still covered.';\n} else {\n  verdict = 'expired';\n  reason = label + ' bought ' + fmt(bought) + ' \u2014 ' + monthsSince + ' months ago, warranty was ' + warrantyMonths + ' months. Warranty expired.';\n}\nreturn [{ json: { name: v.name, message: v.message, valid: v.valid, reason: v.reason, product, product_label: label, purchase_date: bought ? fmt(bought) : null, months_since_purchase: monthsSince, warranty_months: warrantyMonths, verdict, warranty_reason: reason } }];"
+      }
+    },
+    {
+      "id": "c00a4a24-96e9-437a-a61e-84eea27d348c",
+      "name": "Route Claim",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1300,
+        320
+      ],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d83652f9-6082-4efd-881d-b219a8545531",
+                    "leftValue": "={{ $json.verdict }}",
+                    "rightValue": "covered",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Covered"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f7b3510d-7c7e-4354-99c1-1302accc14de",
+                    "leftValue": "={{ $json.verdict }}",
+                    "rightValue": "expired",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Expired"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "081cac72-8b3a-4903-bbc7-e325d157cbf2",
+                    "leftValue": "={{ $json.verdict }}",
+                    "rightValue": "need_proof",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Need Proof"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "422dcc71-b9cd-47b2-b57b-c81e0ccccf0c",
+                    "leftValue": "={{ $json.verdict }}",
+                    "rightValue": "out_of_scope",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Out of Scope"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": true,
+          "fallbackOutputKey": "Need Proof"
+        }
+      }
+    },
+    {
+      "id": "8fe1794c-1d3a-479e-bdf2-98b3913c070f",
+      "name": "Covered Reply",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1560,
+        80
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Write a friendly reply for this customer. Customer name: ' + $json.name + '. Their ' + $json.product_label + ' is still under warranty \u2014 bought ' + $json.purchase_date + ' (' + $json.months_since_purchase + ' months ago), warranty ' + $json.warranty_months + ' months. Tell them the next step: bring the product and the proof of purchase to the shop and the repair or replacement is free under warranty. Warm, under 100 words. Return only the reply text, no JSON, no markdown.' }}",
+        "options": {
+          "systemMessage": "You are a support assistant for a small electronics shop. The customer's product IS under warranty. Write the reply (max 100 words): confirm it is covered, state the purchase date and warranty length given, and give the next step \u2014 bring the product and proof of purchase to the shop for a free repair or replacement. Use ONLY the facts given \u2014 never invent a date or a price. Return ONLY the reply text, no JSON, no markdown."
+        }
+      }
+    },
+    {
+      "id": "b4364790-44ab-430a-a402-341232ab894e",
+      "name": "Expired Reply",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1560,
+        240
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Write a polite reply for this customer. Customer name: ' + $json.name + '. Their ' + $json.product_label + ' is out of warranty \u2014 bought ' + $json.purchase_date + ' (' + $json.months_since_purchase + ' months ago), the warranty was ' + $json.warranty_months + ' months. Say so kindly, offer a paid repair with a free check, no pressure. Warm, under 100 words. Return only the reply text, no JSON, no markdown.' }}",
+        "options": {
+          "systemMessage": "You are a support assistant for a small electronics shop. The customer's product is OUT of warranty. Write the reply (max 100 words): say so kindly, state the purchase date and warranty length given, and offer a paid repair with a free check, no pressure. Use ONLY the facts given \u2014 never invent a date or a price. Return ONLY the reply text, no JSON, no markdown."
+        }
+      }
+    },
+    {
+      "id": "4290185d-5862-4d24-ad8e-2724ca4ca263",
+      "name": "Ask Proof Reply",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1560,
+        400
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Write a short, friendly reply for this customer. Customer name: ' + $json.name + '. They asked whether their ' + $json.product_label + ' is under warranty but gave no purchase date, so we cannot check it yet. Ask them for one thing: the purchase date or a photo of the receipt or invoice. Warm, under 80 words. Return only the reply text, no JSON, no markdown.' }}",
+        "options": {
+          "systemMessage": "You are a support assistant for a small electronics shop. The customer gave no purchase date, so the warranty cannot be checked. Ask for one thing only \u2014 the purchase date or a photo of the receipt or invoice \u2014 in a short friendly message (max 80 words). Never guess a date or a verdict. Return ONLY the reply text, no JSON, no markdown."
+        }
+      }
+    },
+    {
+      "id": "230e68c0-d01f-4b03-86d6-66d141ddb4eb",
+      "name": "Out of Scope Reply",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1560,
+        560
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Write a warm, polite reply for this customer. Customer name: ' + $json.name + '. They asked whether their ' + $json.product_label + ' is under warranty \u2014 but TechCare is an electronics shop and does not sell or cover that kind of product. Say so kindly, list what we do cover (smartphones, laptops, TVs, washing machines, fridges, smartwatches, headphones, chargers and cables), and invite them to ask about one of those instead. Kind, under 100 words. Return only the reply text, no JSON, no markdown.' }}",
+        "options": {
+          "systemMessage": "You are a support assistant for a small electronics shop. The customer asked about a product the shop does not sell. Reply warmly (max 100 words): say the shop only covers electronics, list what is covered (smartphones, laptops, TVs, washing machines, fridges, smartwatches, headphones, chargers and cables), and invite a question about one of those. Never promise coverage or a price for the out-of-scope product. Return ONLY the reply text, no JSON, no markdown."
+        }
+      }
+    },
+    {
+      "id": "a0a8a02a-5f4d-4e2d-86ef-3b7e6766afa0",
+      "name": "Reply \u2014 Warranty Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1820,
+        320
+      ],
+      "parameters": {
+        "options": {},
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ verdict: $('Check Warranty').first().json.verdict, product: $('Check Warranty').first().json.product, product_label: $('Check Warranty').first().json.product_label, purchase_date: $('Check Warranty').first().json.purchase_date, months_since_purchase: $('Check Warranty').first().json.months_since_purchase, warranty_months: $('Check Warranty').first().json.warranty_months, name: $('Check Warranty').first().json.name, reply: $json.output, message: 'Warranty reply ready.' }) }}"
+      }
+    },
+    {
+      "id": "f0760568-cd0e-4d4a-881a-549814e446e9",
+      "name": "Groq Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        520,
+        80
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "7JX1ltl0qs1xrSEY",
+          "name": "Groq account"
+        }
+      },
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {
+          "temperature": 0.3,
+          "maxTokensToSample": 8000
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
